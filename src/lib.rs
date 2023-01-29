@@ -197,7 +197,6 @@ impl<'a> std::ops::Index<&str> for Value<'a> {
     }
 }
 
-// TODO: error handling
 fn vdf_parse<'a>(mut stream: Chars<'a>) -> io::Result<Value<'a>> {
     fn parse_str<'a>(chars: &mut Chars<'a>) -> io::Result<&'a str> {
         let buf = chars.as_str();
@@ -219,6 +218,7 @@ fn vdf_parse<'a>(mut stream: Chars<'a>) -> io::Result<Value<'a>> {
         if start.is_ascii_whitespace() {
             continue;
         }
+
         if key.is_none() {
             if start == '"' {
                 key = Some(parse_str(&mut stream).unwrap());
@@ -227,8 +227,7 @@ fn vdf_parse<'a>(mut stream: Chars<'a>) -> io::Result<Value<'a>> {
                 parent.push((key, Value::Map(map)));
                 map = parent;
             } else {
-                println!("{start}");
-                unimplemented!("error handling");
+                return Err(io::Error::new(io::ErrorKind::InvalidData, "unexpected token while parsing"));
             }
         } else if let Some(key) = key.take() {
             if start == '"' {
@@ -237,7 +236,7 @@ fn vdf_parse<'a>(mut stream: Chars<'a>) -> io::Result<Value<'a>> {
                 map.sort_unstable_by(|a, b| a.0.cmp(&b.0));
                 stack.push((std::mem::take(&mut map), key));
             } else {
-                unimplemented!("error handling");
+                return Err(io::Error::new(io::ErrorKind::InvalidData, "unexpected token while parsing"));
             }
         } else {
             unreachable!();
