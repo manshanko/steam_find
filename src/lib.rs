@@ -205,7 +205,7 @@ fn vdf_parse<'a>(mut stream: Chars<'a>) -> io::Result<Value<'a>> {
             if next == '"' {
                 break;
             } else {
-                len += 1;
+                len += next.len_utf8();
             }
         }
         Ok(&buf[..len])
