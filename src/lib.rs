@@ -284,4 +284,13 @@ mod test {
         assert_eq!(ast["AppState"]["name"].as_str(), Some("Test Game"));
         assert_eq!(ast["AppState"]["UserConfig"]["language"].as_str(), Some("english"));
     }
+
+    #[test]
+    fn utf8() {
+        crate::vdf_parse(r#"
+            "ᚠ"
+            {
+            }
+        "#.chars()).unwrap();
+    }
 }
