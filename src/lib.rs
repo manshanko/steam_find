@@ -53,14 +53,30 @@ pub fn steam_dir() -> io::Result<PathBuf> {
     Err(io::Error::new(io::ErrorKind::NotFound, "failed to find Steam"))
 }
 
+#[cfg(not(target_os = "windows"))]
+fn home_dir() -> io::Result<std::ffi::OsString> {
+    std::env::var_os("HOME").ok_or(io::Error::new(io::ErrorKind::NotFound, "$HOME not set"))
+}
+
 #[cfg(target_os = "macos")]
 pub fn steam_dir() -> io::Result<PathBuf> {
-    Ok(PathBuf::from("~/Library/Application Support/Steam"))
+    let home = home_dir()?;
+    let mut path = PathBuf::with_capacity(home.len() + 64);
+    path.push(home);
+    path.push("Library");
+    path.push("Application Support");
+    path.push("Steam");
+    Ok(path)
 }
 
 #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
 pub fn steam_dir() -> io::Result<PathBuf> {
-    Ok(PathBuf::from("~/.steam/steam"))
+    let home = home_dir()?;
+    let mut path = PathBuf::with_capacity(home.len() + 64);
+    path.push(home);
+    path.push(".steam");
+    path.push("steam");
+    Ok(path)
 }
 
 pub fn steam_apps() -> io::Result<Vec<App>> {
