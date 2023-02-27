@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fs;
 use std::fmt::Write;
 use std::io;
@@ -88,7 +89,6 @@ pub fn steam_apps() -> io::Result<Vec<App>> {
     let mut libraries = Vec::new();
     for (_key, map) in lib["libraryfolders"].iter() {
         if let Some(path) = map["path"].as_str() {
-            let path = path.replace(r"\\", r"\");
             let path = Path::new(&path).join("steamapps");
             libraries.push(path);
         }
@@ -135,7 +135,7 @@ pub fn get_steam_app(app_id: u64) -> io::Result<App> {
                 }
 
                 if let Some(path) = map["path"].as_str() {
-                    let mut path = path.replace(r"\\", r"\");
+                    let mut path = path.to_string();
                     write!(&mut path, "/steamapps/").unwrap();
                     let len = path.len();
                     write!(&mut path, "appmanifest_{target_id}.acf").unwrap();
@@ -170,15 +170,15 @@ pub struct App {
 
 #[derive(Debug)]
 enum Value<'a> {
-    Map(Vec<(&'a str, Value<'a>)>),
-    Str(&'a str),
+    Map(Vec<(Cow<'a, str>, Value<'a>)>),
+    Str(Cow<'a, str>),
     Null,
 }
 
 impl<'a> Value<'a> {
-    fn as_str(&self) -> Option<&'a str> {
+    fn as_str(&self) -> Option<&str> {
         match self {
-            Value::Str(s) => Some(s),
+            Value::Str(s) => Some(s.as_ref()),
             _ => None,
         }
     }
@@ -190,7 +190,7 @@ impl<'a> Value<'a> {
         }
     }
 
-    fn iter(&self) -> std::slice::Iter<'a, (&'a str, Value)> {
+    fn iter(&self) -> std::slice::Iter<'a, (Cow<'a, str>, Value)> {
         match self {
             Value::Map(map) => map.iter(),
             _ => [].iter(),
@@ -214,20 +214,44 @@ impl<'a> std::ops::Index<&str> for Value<'a> {
 }
 
 fn vdf_parse<'a>(mut stream: Chars<'a>) -> io::Result<Value<'a>> {
-    fn parse_str<'a>(chars: &mut Chars<'a>) -> io::Result<&'a str> {
+    fn parse_str<'a>(chars: &mut Chars<'a>) -> io::Result<Cow<'a, str>> {
         let buf = chars.as_str();
         let mut len = 0;
+        let mut owned = None;
+        let mut is_escaped = false;
         while let Some(next) = chars.next() {
-            if next == '"' {
-                break;
+            if is_escaped {
+                is_escaped = false;
+                let owned = owned.get_or_insert(buf[..len].to_string());
+                match next {
+                    '"' => owned.push('"'),
+                    'r' => owned.push('\r'),
+                    'n' => owned.push('\n'),
+                    '\\' => owned.push('\\'),
+                    _ => unimplemented!(),
+                }
             } else {
-                len += next.len_utf8();
+                match next {
+                    '"' => break,
+                    '\\' => is_escaped = true,
+                    _ => {
+                        if let Some(owned) = &mut owned {
+                            owned.push(next);
+                        } else {
+                            len += next.len_utf8();
+                        }
+                    }
+                }
             }
         }
-        Ok(&buf[..len])
+        Ok(if let Some(owned) = owned {
+            Cow::Owned(owned)
+        } else {
+            Cow::Borrowed(&buf[..len])
+        })
     }
 
-    let mut stack: Vec<(Vec<(&str, Value)>, &str)> = Vec::with_capacity(16);
+    let mut stack: Vec<(Vec<(Cow<'a, str>, Value)>, Cow<'a, str>)> = Vec::with_capacity(16);
     let mut map = Vec::new();
     let mut key = None;
     while let Some(start) = stream.next() {
@@ -288,9 +312,15 @@ mod test {
     #[test]
     fn utf8() {
         crate::vdf_parse(r#"
-            "ᚠ"
-            {
-            }
+            "ᚠ" {}
         "#.chars()).unwrap();
+    }
+
+    #[test]
+    fn escaped_characters() {
+        let ast = crate::vdf_parse(r#"
+            "AppState" { "name" "\\" }
+        "#.chars()).unwrap();
+        assert_eq!(Some(r"\"), ast["appstate"]["name"].as_str(), "{ast:?}");
     }
 }
