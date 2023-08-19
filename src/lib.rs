@@ -26,7 +26,8 @@ pub fn steam_dir() -> io::Result<PathBuf> {
         ) -> u32;
     }
 
-    const HKEY_CURRENT_USER: isize = -2_147_483_647isize;
+    const HKEY_CURRENT_USER: isize = 0x80000001_isize;
+    const HKEY_LOCAL_MACHINE: isize = 0x80000002_isize;
     const RRF_RT_REG_SZ: u32 = 2u32;
 
     const BUFFER_SIZE: usize = 1024;
@@ -39,6 +40,14 @@ pub fn steam_dir() -> io::Result<PathBuf> {
             HKEY_CURRENT_USER,
             OsString::from("SOFTWARE\\Valve\\Steam\0").encode_wide().collect::<Vec<_>>().as_ptr() as *const _,
             OsString::from("SteamPath\0").encode_wide().collect::<Vec<_>>().as_ptr() as *const _,
+            RRF_RT_REG_SZ,
+            &mut kind,
+            buffer.as_mut_ptr() as *mut _,
+            &mut size,
+        ) == 0 || RegGetValueW(
+            HKEY_LOCAL_MACHINE,
+            OsString::from("SOFTWARE\\WOW6432Node\\Valve\\Steam\0").encode_wide().collect::<Vec<_>>().as_ptr() as *const _,
+            OsString::from("InstallPath\0").encode_wide().collect::<Vec<_>>().as_ptr() as *const _,
             RRF_RT_REG_SZ,
             &mut kind,
             buffer.as_mut_ptr() as *mut _,
