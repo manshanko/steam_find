@@ -14,6 +14,7 @@ pub fn steam_dir() -> io::Result<PathBuf> {
     use std::os::windows::ffi::OsStrExt;
     use std::os::windows::ffi::OsStringExt;
 
+    #[link(name = "advapi32.dll", kind = "raw-dylib", modifiers = "+verbatim")]
     extern "system" {
         fn RegGetValueW(
             hkey: isize,
