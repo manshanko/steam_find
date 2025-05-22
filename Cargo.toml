@@ -1,9 +1,7 @@
 [package]
 name = "steam_find"
 version = "0.1.2"
-authors = ["ManShanko <deathage@gmail.com>"]
+authors = ["manshanko <manshanko@wartide.net>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/ManShanko/steam_find"
-
-[dependencies]
+repository = "https://github.com/manshanko/steam_find"
