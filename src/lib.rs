@@ -200,7 +200,7 @@ impl<'a> Value<'a> {
         }
     }
 
-    fn iter(&self) -> std::slice::Iter<'a, (Cow<'a, str>, Value)> {
+    fn iter(&self) -> std::slice::Iter<'a, (Cow<'a, str>, Value<'_>)> {
         match self {
             Value::Map(map) => map.iter(),
             _ => [].iter(),
