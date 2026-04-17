@@ -61,6 +61,12 @@ pub fn steam_dir() -> io::Result<PathBuf> {
         }
     }
 
+    if let Some(home) = std::env::var_os("WINEHOMEDIR") {
+        let mut path = PathBuf::from(home);
+        path.push(r".steam\steam");
+        return Ok(path);
+    }
+
     Err(io::Error::new(io::ErrorKind::NotFound, "failed to find Steam"))
 }
 
